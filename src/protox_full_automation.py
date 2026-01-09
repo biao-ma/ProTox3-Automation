@@ -157,8 +157,9 @@ def process_compound(driver, pubchem_id, canonical_smiles):
         # Find and fill SMILES input field
         log_message("  Filling SMILES input field...")
         try:
+            # Use ID instead of NAME - the field has id="smiles_field"
             smiles_input = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.NAME, "smiles_field"))
+                EC.presence_of_element_located((By.ID, "smiles_field"))
             )
         except TimeoutException:
             log_message("  ✗ Timeout waiting for SMILES input field")
@@ -170,23 +171,24 @@ def process_compound(driver, pubchem_id, canonical_smiles):
         smiles_input.send_keys(canonical_smiles)
         log_message("  ✓ SMILES input filled")
         
-        # Click SMILES button
+        # Click SMILES button (submit button next to SMILES field)
         log_message("  Clicking SMILES button...")
-        smiles_button = driver.find_element(By.NAME, "smiles")
+        # The SMILES button is a submit button with type="submit" after the smiles_field
+        smiles_button = driver.find_element(By.XPATH, "//input[@id='smiles_field']/following-sibling::input[@type='submit']")
         smiles_button.click()
         time.sleep(2)
         log_message("  ✓ SMILES button clicked")
         
         # Click All button
         log_message("  Clicking All button...")
-        all_button = driver.find_element(By.NAME, "all")
+        all_button = driver.find_element(By.ID, "button_all")
         all_button.click()
         time.sleep(1)
         log_message("  ✓ All button clicked")
         
         # Click Start Tox-Prediction button
         log_message("  Clicking Start Tox-Prediction button...")
-        start_button = driver.find_element(By.NAME, "start")
+        start_button = driver.find_element(By.ID, "start_pred")
         start_button.click()
         log_message("  ✓ Start button clicked, waiting for results...")
         
