@@ -34,7 +34,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/YOUR_USERNAME/ProTox3-Automation.git
+git clone https://github.com/biao-ma/ProTox3-Automation.git
 cd ProTox3-Automation
 
 # 运行安装脚本
@@ -48,7 +48,7 @@ bash run_protox.sh
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/YOUR_USERNAME/ProTox3-Automation.git
+git clone https://github.com/biao-ma/ProTox3-Automation.git
 cd ProTox3-Automation
 
 # 2. 创建虚拟环境
@@ -201,8 +201,8 @@ MAX_WAIT_TIME = 900  # 15分钟
 
 ## 📞 联系方式
 
-- 问题反馈：[GitHub Issues](https://github.com/YOUR_USERNAME/ProTox3-Automation/issues)
-- 功能建议：[GitHub Discussions](https://github.com/YOUR_USERNAME/ProTox3-Automation/discussions)
+- 问题反馈：[GitHub Issues](https://github.com/biao-ma/ProTox3-Automation/issues)
+- 功能建议：[GitHub Discussions](https://github.com/biao-ma/ProTox3-Automation/discussions)
 
 ## 🌟 Star History
 

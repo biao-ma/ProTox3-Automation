@@ -8,7 +8,7 @@
 
 如果您发现了bug或有功能建议，请：
 
-1. 检查 [Issues](https://github.com/YOUR_USERNAME/ProTox3-Automation/issues) 是否已有相同问题
+1. 检查 [Issues](https://github.com/biao-ma/ProTox3-Automation/issues) 是否已有相同问题
 2. 如果没有，创建一个新的 Issue
 3. 清楚地描述问题或建议
 4. 如果是bug，请提供复现步骤和环境信息
@@ -22,7 +22,7 @@
 
 2. **克隆您的Fork**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/ProTox3-Automation.git
+   git clone https://github.com/biao-ma/ProTox3-Automation.git
    cd ProTox3-Automation
    ```
 
@@ -134,7 +134,7 @@ pytest --cov=src tests/
 
 如有任何问题，请：
 - 查看 [文档](docs/)
-- 在 [Discussions](https://github.com/YOUR_USERNAME/ProTox3-Automation/discussions) 提问
+- 在 [Discussions](https://github.com/biao-ma/ProTox3-Automation/discussions) 提问
 - 联系维护者
 
 感谢您的贡献！🎉

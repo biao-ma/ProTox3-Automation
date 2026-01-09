@@ -392,7 +392,7 @@ driver.save_screenshot('debug_screenshot.png')
    ```
 
 2. **搜索已知问题**
-   - [GitHub Issues](https://github.com/YOUR_USERNAME/ProTox3-Automation/issues)
+   - [GitHub Issues](https://github.com/biao-ma/ProTox3-Automation/issues)
 
 3. **创建新Issue**
    - 提供详细的错误信息

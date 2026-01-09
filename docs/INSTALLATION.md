@@ -58,7 +58,7 @@ sudo apt install chromium-browser -y
 #### 2. 克隆项目
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ProTox3-Automation.git
+git clone https://github.com/biao-ma/ProTox3-Automation.git
 cd ProTox3-Automation
 ```
 
@@ -108,7 +108,7 @@ brew install --cask google-chrome
 #### 3. 克隆项目
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ProTox3-Automation.git
+git clone https://github.com/biao-ma/ProTox3-Automation.git
 cd ProTox3-Automation
 ```
 
@@ -161,7 +161,7 @@ wsl --install -d Ubuntu-22.04
 #### 4. 克隆项目
 
 ```cmd
-git clone https://github.com/YOUR_USERNAME/ProTox3-Automation.git
+git clone https://github.com/biao-ma/ProTox3-Automation.git
 cd ProTox3-Automation
 ```
 
@@ -369,7 +369,7 @@ rm -rf ProTox3-Automation/
 如果遇到其他问题：
 
 1. 查看 [故障排除文档](TROUBLESHOOTING.md)
-2. 搜索 [GitHub Issues](https://github.com/YOUR_USERNAME/ProTox3-Automation/issues)
+2. 搜索 [GitHub Issues](https://github.com/biao-ma/ProTox3-Automation/issues)
 3. 创建新的 Issue 并提供详细信息
 
 ---
