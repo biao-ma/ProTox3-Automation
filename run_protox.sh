@@ -9,6 +9,9 @@
 #
 # Usage: bash run_protox.sh [start] [end]
 # Example: bash run_protox.sh 0 10
+#
+# NOTE: All paths are read from config.py
+# To customize paths, edit config.py instead of this script
 
 set -e
 
@@ -23,21 +26,27 @@ NC='\033[0m' # No Color
 # Get the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Configuration - use relative paths
+# Helper function to read config from config.py
+get_config() {
+    python3 "$SCRIPT_DIR/src/get_config.py" "$1" 2>/dev/null || {
+        print_error "Failed to read configuration: $1"
+        exit 1
+    }
+}
+
+# Read configuration from config.py
 VENV_PATH="$SCRIPT_DIR/venv"
-DATA_DIR="$SCRIPT_DIR/data"
-RESULTS_DIR="$SCRIPT_DIR/results"
-LOG_DIR="$SCRIPT_DIR/logs"
+DATA_DIR=$(get_config "DATA_DIR")
+RESULTS_DIR=$(get_config "RESULTS_DIR")
+LOGS_DIR=$(get_config "LOGS_DIR")
+INPUT_CSV=$(get_config "INPUT_FILE")
+CANONICAL_CSV=$(get_config "CANONICAL_SMILES_FILE")
+SUMMARY_CSV=$(get_config "CYTOTOXICITY_SUMMARY_FILE")
 
 # Script paths
 CONVERT_SCRIPT="$SCRIPT_DIR/src/convert_smiles.py"
 PROTOX_SCRIPT="$SCRIPT_DIR/src/protox_full_automation.py"
 EXTRACT_SCRIPT="$SCRIPT_DIR/src/extract_cytotoxicity.py"
-
-# Data files
-INPUT_CSV="$DATA_DIR/input.csv"
-CANONICAL_CSV="$DATA_DIR/canonical_smiles.csv"
-SUMMARY_CSV="$RESULTS_DIR/cytotoxicity_summary.csv"
 
 # Functions: Print colored messages
 print_info() {
@@ -67,6 +76,8 @@ print_banner() {
     echo -e "${BLUE}║${NC}     ProTox-3 Cytotoxicity Prediction Automation           ${BLUE}║${NC}"
     echo -e "${BLUE}║${NC}     Complete Workflow: Data → Prediction → Results        ${BLUE}║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}Configuration loaded from config.py${NC}"
     echo ""
 }
 
@@ -116,6 +127,8 @@ setup_venv() {
 check_input_data() {
     print_step "Step 2: Checking input data"
     
+    print_info "Input file path: $INPUT_CSV"
+    
     # Check if input.csv exists
     if [ ! -f "$INPUT_CSV" ]; then
         print_error "Input file not found: $INPUT_CSV"
@@ -128,6 +141,7 @@ check_input_data() {
         echo "You can:"
         echo "  1. Create $INPUT_CSV with your data"
         echo "  2. Use the example file: cp $DATA_DIR/example_input.csv $INPUT_CSV"
+        echo "  3. Modify INPUT_FILE path in config.py"
         echo ""
         exit 1
     fi
@@ -143,6 +157,8 @@ check_input_data() {
 # Convert SMILES to Canonical format
 convert_smiles() {
     print_step "Step 3: Converting SMILES to Canonical format"
+    
+    print_info "Output file: $CANONICAL_CSV"
     
     if [ -f "$CANONICAL_CSV" ]; then
         print_warning "Canonical SMILES file already exists"
@@ -176,6 +192,9 @@ run_predictions() {
     
     print_step "Step 4: Running toxicity predictions"
     
+    print_info "Results will be saved to: $RESULTS_DIR"
+    print_info "Processing log: $LOGS_DIR/processing_log.txt"
+    
     # Determine processing range
     if [ -z "$END_IDX" ]; then
         TOTAL_TO_PROCESS=$((CONVERTED_COMPOUNDS - START_IDX))
@@ -203,7 +222,7 @@ run_predictions() {
     
     echo ""
     print_info "Starting toxicity predictions..."
-    print_info "You can monitor progress in: $LOG_DIR/processing_log.txt"
+    print_info "You can monitor progress in: $LOGS_DIR/processing_log.txt"
     echo ""
     
     # Run prediction script
@@ -240,6 +259,7 @@ extract_results() {
         print_success "Results extracted and aggregated"
         SUMMARY_COUNT=$(($(wc -l < "$SUMMARY_CSV") - 1))
         print_info "Total compounds in summary: $SUMMARY_COUNT"
+        print_info "Summary file: $SUMMARY_CSV"
     else
         print_warning "Summary file not created"
     fi
@@ -262,7 +282,7 @@ display_results() {
         print_info "Results Summary:"
         echo "  📁 Individual reports: $RESULTS_DIR/CID_*.csv"
         echo "  📊 Aggregated summary: $SUMMARY_CSV"
-        echo "  📝 Processing log: $LOG_DIR/processing_log.txt"
+        echo "  📝 Processing log: $LOGS_DIR/processing_log.txt"
         echo ""
         
         # Display cytotoxicity statistics
@@ -288,6 +308,9 @@ display_results() {
     echo "  • Review the results in $SUMMARY_CSV"
     echo "  • Check individual reports in $RESULTS_DIR/"
     echo "  • Analyze the data for your research"
+    echo ""
+    
+    print_info "To customize paths, edit config.py"
     echo ""
 }
 

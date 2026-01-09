@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
 """
 ProTox3-Automation Configuration File
-All configurable paths and settings
+
+This is the SINGLE SOURCE OF TRUTH for all configuration.
+All Python scripts and shell scripts read from this file.
+
+To customize paths or settings:
+1. Edit this file
+2. Save changes
+3. Run your scripts - they will automatically use the new settings
+
+No need to modify any other files!
 """
 
 import os
