@@ -35,16 +35,22 @@
 ### One-Click Installation (Recommended)
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/biao-ma/ProTox3-Automation.git
 cd ProTox3-Automation
 
-# Run the installation script
+# 2. One-time setup (installs all dependencies)
 bash setup.sh
 
-# Start using
+# 3. Prepare your input data
+cp data/example_input.csv data/input.csv
+# Edit data/input.csv with your compounds
+
+# 4. Run the complete workflow (fast start, no installation)
 bash run_protox.sh
 ```
+
+**Note**: `setup.sh` only needs to be run once. Subsequent runs of `run_protox.sh` will start immediately without reinstalling dependencies (~5 seconds vs ~2 minutes).
 
 ### Manual Installation
 

@@ -70,45 +70,45 @@ print_banner() {
     echo ""
 }
 
-# Check and setup virtual environment
+# Check and activate virtual environment
 setup_venv() {
     print_step "Step 1: Setting up virtual environment"
     
     if [ ! -d "$VENV_PATH" ]; then
-        print_warning "Virtual environment does not exist, creating..."
-        python3 -m venv "$VENV_PATH"
-        print_success "Virtual environment created"
-    else
-        print_info "Virtual environment already exists"
+        print_error "Virtual environment not found!"
+        echo ""
+        echo "Please run setup.sh first to create the virtual environment:"
+        echo "  bash setup.sh"
+        echo ""
+        exit 1
     fi
+    
+    print_info "Virtual environment found"
     
     # Activate virtual environment
     print_info "Activating virtual environment..."
     source "$VENV_PATH/bin/activate"
     print_success "Virtual environment activated"
     
-    # Check and install dependencies
+    # Quick dependency check (no installation)
     print_info "Checking dependencies..."
-    if [ -f "requirements.txt" ]; then
-        print_info "Installing dependencies from requirements.txt..."
-        pip install -r requirements.txt -q 2>/dev/null || {
-            print_warning "Some dependencies failed, trying individually..."
-            pip install selenium
-            # Try rdkit-pypi first, fallback to rdkit if it fails
-            pip install rdkit-pypi 2>/dev/null || pip install rdkit 2>/dev/null || {
-                print_error "Failed to install RDKit. Please install manually:"
-                echo "  pip install rdkit-pypi"
-                echo "  or"
-                echo "  conda install -c conda-forge rdkit"
-                exit 1
-            }
-        }
-    else
-        print_warning "requirements.txt not found, installing core dependencies..."
-        pip install selenium
-        pip install rdkit-pypi 2>/dev/null || pip install rdkit
-    fi
-    print_success "Dependencies ready"
+    
+    # Check if critical packages are installed
+    python3 -c "import selenium" 2>/dev/null || {
+        print_error "Selenium not found!"
+        echo "Please run setup.sh to install dependencies:"
+        echo "  bash setup.sh"
+        exit 1
+    }
+    
+    python3 -c "from rdkit import Chem" 2>/dev/null || {
+        print_error "RDKit not found!"
+        echo "Please run setup.sh to install dependencies:"
+        echo "  bash setup.sh"
+        exit 1
+    }
+    
+    print_success "All dependencies are installed"
     echo ""
 }
 
@@ -300,7 +300,7 @@ main() {
     # Print banner
     print_banner
     
-    # Step 1: Setup virtual environment
+    # Step 1: Setup virtual environment (check only, no installation)
     setup_venv
     
     # Step 2: Check input data
