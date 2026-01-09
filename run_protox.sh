@@ -89,10 +89,25 @@ setup_venv() {
     
     # Check and install dependencies
     print_info "Checking dependencies..."
-    pip install -q selenium rdkit-pypi 2>/dev/null || {
-        print_warning "Installing dependencies..."
-        pip install selenium rdkit-pypi
-    }
+    if [ -f "requirements.txt" ]; then
+        print_info "Installing dependencies from requirements.txt..."
+        pip install -r requirements.txt -q 2>/dev/null || {
+            print_warning "Some dependencies failed, trying individually..."
+            pip install selenium
+            # Try rdkit-pypi first, fallback to rdkit if it fails
+            pip install rdkit-pypi 2>/dev/null || pip install rdkit 2>/dev/null || {
+                print_error "Failed to install RDKit. Please install manually:"
+                echo "  pip install rdkit-pypi"
+                echo "  or"
+                echo "  conda install -c conda-forge rdkit"
+                exit 1
+            }
+        }
+    else
+        print_warning "requirements.txt not found, installing core dependencies..."
+        pip install selenium
+        pip install rdkit-pypi 2>/dev/null || pip install rdkit
+    fi
     print_success "Dependencies ready"
     echo ""
 }

@@ -46,21 +46,36 @@ def log_message(message):
         f.write(log_entry + '\n')
 
 def create_driver():
-    """Create Chrome WebDriver"""
+    """Create Chrome WebDriver with SSL certificate handling"""
     chrome_options = Options()
     
     if config.HEADLESS_MODE:
-        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--headless=new')  # Use new headless mode
     
+    # Basic options
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+    
+    # SSL certificate handling
     chrome_options.add_argument('--ignore-certificate-errors')
+    chrome_options.add_argument('--ignore-ssl-errors')
     chrome_options.add_argument('--ignore-certificate-errors-spki-list')
     chrome_options.add_argument('--allow-insecure-localhost')
-    chrome_options.add_argument('--disable-web-resources')
+    chrome_options.add_argument('--allow-running-insecure-content')
+    
+    # Anti-detection
+    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    
+    # Additional stability options
+    chrome_options.add_argument('--disable-web-security')
     chrome_options.add_argument('--disable-features=IsolateOrigins,site-per-process')
+    chrome_options.add_argument('--window-size=1920,1080')
+    
+    # Set page load strategy
+    chrome_options.page_load_strategy = 'normal'
     
     try:
         driver = webdriver.Chrome(options=chrome_options)
@@ -112,14 +127,45 @@ def process_compound(driver, pubchem_id, canonical_smiles):
         
         # Navigate to ProTox-3 input page
         log_message(f"  Navigating to {PROTOX_URL}")
-        driver.get(PROTOX_URL)
-        time.sleep(3)
+        try:
+            driver.get(PROTOX_URL)
+            time.sleep(5)  # Increased wait time for SSL certificate handling
+        except Exception as e:
+            log_message(f"  ✗ Navigation failed: {e}")
+            log_message("  Trying to handle SSL certificate warning...")
+            try:
+                # Try to click through SSL warning if present
+                driver.execute_script("window.stop();")
+                time.sleep(2)
+                driver.get(PROTOX_URL)
+                time.sleep(5)
+            except:
+                pass
+        
+        # Check if page loaded successfully
+        log_message(f"  Current URL: {driver.current_url}")
+        log_message(f"  Page title: {driver.title}")
+        
+        # Save screenshot for debugging
+        try:
+            screenshot_path = os.path.join(OUTPUT_DIR, f"debug_{pubchem_id}_page.png")
+            driver.save_screenshot(screenshot_path)
+            log_message(f"  Screenshot saved: {screenshot_path}")
+        except:
+            pass
         
         # Find and fill SMILES input field
         log_message("  Filling SMILES input field...")
-        smiles_input = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "smiles_field"))
-        )
+        try:
+            smiles_input = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.NAME, "smiles_field"))
+            )
+        except TimeoutException:
+            log_message("  ✗ Timeout waiting for SMILES input field")
+            log_message("  Checking page source for debugging...")
+            page_source = driver.page_source[:500]  # First 500 chars
+            log_message(f"  Page source preview: {page_source}")
+            raise
         smiles_input.clear()
         smiles_input.send_keys(canonical_smiles)
         log_message("  ✓ SMILES input filled")
