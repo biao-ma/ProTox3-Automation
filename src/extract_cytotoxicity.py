@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-从所有CID_*.csv文件中提取Cytotoxicity行并汇总到一个新的CSV文件
+Extract Cytotoxicity Data from ProTox-3 Results
+Function: Extract Cytotoxicity rows from all CID_*.csv files and aggregate into a summary file
+
+Usage:
+    python3 extract_cytotoxicity.py
 """
 
 import csv
@@ -8,69 +12,100 @@ import os
 import sys
 from pathlib import Path
 
-def extract_cytotoxicity_from_file(file_path):
-    """从单个CSV文件中提取Cytotoxicity行"""
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row.get('Target') == 'Cytotoxicity':
-                    return row
-    except Exception as e:
-        print(f"读取文件 {file_path} 失败: {e}")
-    
-    return None
+# Add parent directory to path to import config
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import config
 
-def main():
-    # 结果目录
-    result_dir = '/home/ubuntu/protox_results'
+# Configuration from config.py
+RESULT_DIR = config.RESULTS_DIR
+OUTPUT_FILE = config.CYTOTOXICITY_SUMMARY_FILE
+
+def extract_cytotoxicity():
+    """Extract Cytotoxicity data from all CID_*.csv files"""
     
-    # 查找所有CID_*.csv文件
-    cid_files = sorted(Path(result_dir).glob('CID_*.csv'))
+    print("=" * 60)
+    print("Extracting Cytotoxicity Data")
+    print("=" * 60)
+    print(f"Results directory: {RESULT_DIR}")
+    print(f"Output file: {OUTPUT_FILE}")
+    print("")
     
-    if not cid_files:
-        print(f"在 {result_dir} 中找不到任何CID_*.csv文件")
+    # Check if results directory exists
+    if not os.path.exists(RESULT_DIR):
+        print(f"✗ Results directory not found: {RESULT_DIR}")
         return
     
-    print(f"找到 {len(cid_files)} 个CID_*.csv文件")
+    # Find all CID_*.csv files
+    cid_files = []
+    for filename in os.listdir(RESULT_DIR):
+        if filename.startswith('CID_') and filename.endswith('.csv'):
+            cid_files.append(filename)
     
-    # 提取所有Cytotoxicity数据
-    results = []
-    for file_path in cid_files:
-        # 从文件名中提取PubChem_ID
-        pubchem_id = file_path.stem.replace('CID_', '')
-        
-        # 提取Cytotoxicity行
-        cyto_row = extract_cytotoxicity_from_file(file_path)
-        
-        if cyto_row:
-            result = {
-                'PubChem_ID': pubchem_id,
-                'Classification': cyto_row.get('Classification', ''),
-                'Target': cyto_row.get('Target', ''),
-                'Shorthand': cyto_row.get('Shorthand', ''),
-                'Prediction': cyto_row.get('Prediction', ''),
-                'Probability': cyto_row.get('Probability', '')
-            }
-            results.append(result)
-            print(f"✓ {pubchem_id}: {cyto_row.get('Prediction', 'N/A')} ({cyto_row.get('Probability', 'N/A')})")
-        else:
-            print(f"✗ {pubchem_id}: 未找到Cytotoxicity行")
+    if not cid_files:
+        print("✗ No CID_*.csv files found in results directory")
+        return
     
-    # 保存汇总结果
-    if results:
-        output_file = os.path.join(result_dir, 'cytotoxicity_summary.csv')
-        with open(output_file, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['PubChem_ID', 'Classification', 'Target', 'Shorthand', 'Prediction', 'Probability'])
-            writer.writeheader()
-            writer.writerows(results)
+    print(f"Found {len(cid_files)} CID files")
+    print("")
+    
+    # Extract Cytotoxicity data
+    cytotoxicity_data = []
+    
+    for filename in sorted(cid_files):
+        filepath = os.path.join(RESULT_DIR, filename)
+        pubchem_id = filename.replace('CID_', '').replace('.csv', '')
         
-        print(f"\n{'='*60}")
-        print(f"✓ 成功提取 {len(results)} 个化合物的Cytotoxicity数据")
-        print(f"✓ 汇总结果已保存到: {output_file}")
-        print(f"{'='*60}")
+        print(f"Processing: {filename}")
+        
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    # Check if this row contains Cytotoxicity data
+                    if len(row) > 0 and 'Cytotoxicity' in ' '.join(row):
+                        # Insert PubChem_ID as the first column
+                        row_with_id = [pubchem_id] + row
+                        cytotoxicity_data.append(row_with_id)
+                        print(f"  ✓ Found Cytotoxicity data: {row}")
+                        break
+        except Exception as e:
+            print(f"  ✗ Error reading file: {e}")
+    
+    print("")
+    print(f"Total Cytotoxicity records extracted: {len(cytotoxicity_data)}")
+    print("")
+    
+    # Save to summary file
+    if cytotoxicity_data:
+        with open(OUTPUT_FILE, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            
+            # Write header
+            header = ['PubChem_ID', 'Classification', 'Target', 'Shorthand', 'Prediction', 'Probability']
+            writer.writerow(header)
+            
+            # Write data
+            for row in cytotoxicity_data:
+                writer.writerow(row)
+        
+        print(f"✓ Summary file saved: {OUTPUT_FILE}")
+        print("")
+        
+        # Display statistics
+        active_count = sum(1 for row in cytotoxicity_data if 'Active' in row)
+        inactive_count = sum(1 for row in cytotoxicity_data if 'Inactive' in row)
+        
+        print("Statistics:")
+        print(f"  Total compounds: {len(cytotoxicity_data)}")
+        print(f"  Active (cytotoxic): {active_count}")
+        print(f"  Inactive (non-cytotoxic): {inactive_count}")
+        print("")
     else:
-        print(f"\n✗ 未能提取任何Cytotoxicity数据")
+        print("✗ No Cytotoxicity data found")
+    
+    print("=" * 60)
+    print("Extraction Complete")
+    print("=" * 60)
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    extract_cytotoxicity()
