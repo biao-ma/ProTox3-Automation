@@ -1,6 +1,12 @@
 #!/bin/bash
 
-# ProTox-3 Quick Start Script
+# ProTox-3 Complete Automation Script
+# This script handles the entire workflow:
+# 1. Check/prepare input data
+# 2. Convert SMILES to Canonical format
+# 3. Run toxicity predictions
+# 4. Extract and aggregate results
+#
 # Usage: bash run_protox.sh [start] [end]
 # Example: bash run_protox.sh 0 10
 
@@ -11,6 +17,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Get the script directory
@@ -18,9 +25,19 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Configuration - use relative paths
 VENV_PATH="$SCRIPT_DIR/venv"
-SCRIPT_PATH="$SCRIPT_DIR/src/protox_full_automation.py"
-OUTPUT_DIR="$SCRIPT_DIR/results"
+DATA_DIR="$SCRIPT_DIR/data"
+RESULTS_DIR="$SCRIPT_DIR/results"
 LOG_DIR="$SCRIPT_DIR/logs"
+
+# Script paths
+CONVERT_SCRIPT="$SCRIPT_DIR/src/convert_smiles.py"
+PROTOX_SCRIPT="$SCRIPT_DIR/src/protox_full_automation.py"
+EXTRACT_SCRIPT="$SCRIPT_DIR/src/extract_cytotoxicity.py"
+
+# Data files
+INPUT_CSV="$DATA_DIR/input.csv"
+CANONICAL_CSV="$DATA_DIR/canonical_smiles.csv"
+SUMMARY_CSV="$RESULTS_DIR/cytotoxicity_summary.csv"
 
 # Functions: Print colored messages
 print_info() {
@@ -39,94 +56,253 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check virtual environment
-print_info "Checking virtual environment..."
-if [ ! -d "$VENV_PATH" ]; then
-    print_warning "Virtual environment does not exist, creating..."
-    python3 -m venv "$VENV_PATH"
-    print_success "Virtual environment created"
-fi
+print_step() {
+    echo -e "${CYAN}[STEP]${NC} $1"
+}
 
-# Activate virtual environment
-print_info "Activating virtual environment..."
-source "$VENV_PATH/bin/activate"
-print_success "Virtual environment activated"
-
-# Check required packages
-print_info "Checking dependencies..."
-pip install -q selenium rdkit 2>/dev/null || true
-
-# Verify script exists
-if [ ! -f "$SCRIPT_PATH" ]; then
-    print_error "Script not found: $SCRIPT_PATH"
-    exit 1
-fi
-
-# Create output directories
-mkdir -p "$OUTPUT_DIR"
-mkdir -p "$LOG_DIR"
-
-# Get command line arguments
-START_IDX=${1:-0}
-END_IDX=${2:-}
-
-# Print startup information
-echo ""
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║${NC}     ProTox-3 Cytotoxicity Prediction Automation           ${BLUE}║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
-echo ""
-
-print_info "Configuration:"
-echo "  Virtual environment: $VENV_PATH"
-echo "  Script path: $SCRIPT_PATH"
-echo "  Output directory: $OUTPUT_DIR"
-echo ""
-
-if [ -z "$END_IDX" ]; then
-    print_info "Processing range: Starting from compound $START_IDX (all remaining compounds)"
+# Print banner
+print_banner() {
     echo ""
-    print_warning "Note: Processing all 97 compounds takes approximately 8-16 hours"
+    echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║${NC}     ProTox-3 Cytotoxicity Prediction Automation           ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}     Complete Workflow: Data → Prediction → Results        ${BLUE}║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    read -p "Continue? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Cancelled"
-        exit 0
+}
+
+# Check and setup virtual environment
+setup_venv() {
+    print_step "Step 1: Setting up virtual environment"
+    
+    if [ ! -d "$VENV_PATH" ]; then
+        print_warning "Virtual environment does not exist, creating..."
+        python3 -m venv "$VENV_PATH"
+        print_success "Virtual environment created"
+    else
+        print_info "Virtual environment already exists"
+    fi
+    
+    # Activate virtual environment
+    print_info "Activating virtual environment..."
+    source "$VENV_PATH/bin/activate"
+    print_success "Virtual environment activated"
+    
+    # Check and install dependencies
+    print_info "Checking dependencies..."
+    pip install -q selenium rdkit-pypi 2>/dev/null || {
+        print_warning "Installing dependencies..."
+        pip install selenium rdkit-pypi
+    }
+    print_success "Dependencies ready"
+    echo ""
+}
+
+# Check input data
+check_input_data() {
+    print_step "Step 2: Checking input data"
+    
+    # Check if input.csv exists
+    if [ ! -f "$INPUT_CSV" ]; then
+        print_error "Input file not found: $INPUT_CSV"
+        echo ""
+        echo "Please prepare your input CSV file with the following format:"
+        echo "  PubChem_ID,SMILES"
+        echo "  311434,CC1=CC(=NO1)NC(=O)..."
+        echo "  54576693,C1CN(CCN1CC2=CC3=..."
+        echo ""
+        echo "You can:"
+        echo "  1. Create $INPUT_CSV with your data"
+        echo "  2. Use the example file: cp $DATA_DIR/example_input.csv $INPUT_CSV"
+        echo ""
+        exit 1
+    fi
+    
+    print_success "Input file found: $INPUT_CSV"
+    
+    # Count compounds in input file
+    TOTAL_COMPOUNDS=$(($(wc -l < "$INPUT_CSV") - 1))
+    print_info "Total compounds in input file: $TOTAL_COMPOUNDS"
+    echo ""
+}
+
+# Convert SMILES to Canonical format
+convert_smiles() {
+    print_step "Step 3: Converting SMILES to Canonical format"
+    
+    if [ -f "$CANONICAL_CSV" ]; then
+        print_warning "Canonical SMILES file already exists"
+        read -p "Do you want to regenerate it? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_info "Using existing canonical SMILES file"
+            echo ""
+            return
+        fi
+    fi
+    
+    print_info "Running SMILES conversion..."
+    python3 "$CONVERT_SCRIPT" "$INPUT_CSV" "$CANONICAL_CSV"
+    
+    if [ -f "$CANONICAL_CSV" ]; then
+        print_success "SMILES conversion completed"
+        CONVERTED_COMPOUNDS=$(($(wc -l < "$CANONICAL_CSV") - 1))
+        print_info "Successfully converted: $CONVERTED_COMPOUNDS compounds"
+    else
+        print_error "SMILES conversion failed"
+        exit 1
     fi
     echo ""
-    python3 "$SCRIPT_PATH" "$START_IDX"
-else
-    print_info "Processing range: From compound $START_IDX to $END_IDX (total: $((END_IDX - START_IDX)) compounds)"
+}
+
+# Run toxicity predictions
+run_predictions() {
+    local START_IDX=$1
+    local END_IDX=$2
+    
+    print_step "Step 4: Running toxicity predictions"
+    
+    # Determine processing range
+    if [ -z "$END_IDX" ]; then
+        TOTAL_TO_PROCESS=$((CONVERTED_COMPOUNDS - START_IDX))
+        print_info "Processing range: From compound $START_IDX to end (total: $TOTAL_TO_PROCESS compounds)"
+    else
+        TOTAL_TO_PROCESS=$((END_IDX - START_IDX))
+        print_info "Processing range: From compound $START_IDX to $END_IDX (total: $TOTAL_TO_PROCESS compounds)"
+    fi
+    
+    # Estimate time
+    MIN_TIME=$(( TOTAL_TO_PROCESS * 5 / 60 ))
+    MAX_TIME=$(( TOTAL_TO_PROCESS * 10 / 60 ))
+    
     echo ""
-    print_warning "Note: Processing $((END_IDX - START_IDX)) compounds takes approximately $(( (END_IDX - START_IDX) * 7 / 60 ))-$(( (END_IDX - START_IDX) * 10 / 60 )) hours"
+    print_warning "Estimated processing time: $MIN_TIME - $MAX_TIME hours"
+    print_warning "Each compound takes approximately 5-10 minutes"
     echo ""
-    read -p "Continue? (y/n) " -n 1 -r
+    
+    read -p "Continue with toxicity prediction? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Cancelled"
+        print_info "Prediction cancelled"
         exit 0
     fi
+    
     echo ""
-    python3 "$SCRIPT_PATH" "$START_IDX" "$END_IDX"
-fi
+    print_info "Starting toxicity predictions..."
+    print_info "You can monitor progress in: $LOG_DIR/processing_log.txt"
+    echo ""
+    
+    # Run prediction script
+    if [ -z "$END_IDX" ]; then
+        python3 "$PROTOX_SCRIPT" "$START_IDX"
+    else
+        python3 "$PROTOX_SCRIPT" "$START_IDX" "$END_IDX"
+    fi
+    
+    print_success "Toxicity predictions completed"
+    echo ""
+}
 
-echo ""
-echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║${NC}                  Processing Complete!                      ${GREEN}║${NC}"
-echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
-echo ""
+# Extract and aggregate results
+extract_results() {
+    print_step "Step 5: Extracting and aggregating results"
+    
+    # Check if there are any result files
+    RESULT_COUNT=$(ls "$RESULTS_DIR"/CID_*.csv 2>/dev/null | wc -l)
+    
+    if [ "$RESULT_COUNT" -eq 0 ]; then
+        print_warning "No result files found in $RESULTS_DIR"
+        print_info "Skipping result extraction"
+        echo ""
+        return
+    fi
+    
+    print_info "Found $RESULT_COUNT result files"
+    print_info "Extracting Cytotoxicity data..."
+    
+    python3 "$EXTRACT_SCRIPT"
+    
+    if [ -f "$SUMMARY_CSV" ]; then
+        print_success "Results extracted and aggregated"
+        SUMMARY_COUNT=$(($(wc -l < "$SUMMARY_CSV") - 1))
+        print_info "Total compounds in summary: $SUMMARY_COUNT"
+    else
+        print_warning "Summary file not created"
+    fi
+    echo ""
+}
 
-# Display result statistics
-COMPLETED=$(ls "$OUTPUT_DIR"/CID_*.csv 2>/dev/null | wc -l)
-print_success "Completed compounds: $COMPLETED"
+# Display final results
+display_results() {
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║${NC}                  Processing Complete!                      ${GREEN}║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    print_success "Workflow completed successfully!"
+    echo ""
+    
+    # Display statistics
+    if [ -f "$SUMMARY_CSV" ]; then
+        print_info "Results Summary:"
+        echo "  📁 Individual reports: $RESULTS_DIR/CID_*.csv"
+        echo "  📊 Aggregated summary: $SUMMARY_CSV"
+        echo "  📝 Processing log: $LOG_DIR/processing_log.txt"
+        echo ""
+        
+        # Display cytotoxicity statistics
+        if command -v awk &> /dev/null; then
+            ACTIVE_COUNT=$(awk -F',' 'NR>1 && $5=="Active" {count++} END {print count+0}' "$SUMMARY_CSV")
+            INACTIVE_COUNT=$(awk -F',' 'NR>1 && $5=="Inactive" {count++} END {print count+0}' "$SUMMARY_CSV")
+            TOTAL_COUNT=$(($(wc -l < "$SUMMARY_CSV") - 1))
+            
+            print_info "Cytotoxicity Statistics:"
+            echo "  Total compounds: $TOTAL_COUNT"
+            echo "  Active (cytotoxic): $ACTIVE_COUNT"
+            echo "  Inactive (non-cytotoxic): $INACTIVE_COUNT"
+            echo ""
+        fi
+        
+        print_info "View results:"
+        echo "  cat $SUMMARY_CSV"
+        echo "  head -20 $SUMMARY_CSV"
+        echo ""
+    fi
+    
+    print_info "Next steps:"
+    echo "  • Review the results in $SUMMARY_CSV"
+    echo "  • Check individual reports in $RESULTS_DIR/"
+    echo "  • Analyze the data for your research"
+    echo ""
+}
 
-if [ -f "$OUTPUT_DIR/cytotoxicity_summary.csv" ]; then
-    SUMMARY_LINES=$(wc -l < "$OUTPUT_DIR/cytotoxicity_summary.csv")
-    print_success "Summary file lines: $((SUMMARY_LINES - 1)) compounds (including header)"
-    print_success "Summary file location: $OUTPUT_DIR/cytotoxicity_summary.csv"
-fi
+# Main workflow
+main() {
+    # Get command line arguments
+    START_IDX=${1:-0}
+    END_IDX=${2:-}
+    
+    # Print banner
+    print_banner
+    
+    # Step 1: Setup virtual environment
+    setup_venv
+    
+    # Step 2: Check input data
+    check_input_data
+    
+    # Step 3: Convert SMILES
+    convert_smiles
+    
+    # Step 4: Run predictions
+    run_predictions "$START_IDX" "$END_IDX"
+    
+    # Step 5: Extract results
+    extract_results
+    
+    # Display final results
+    display_results
+}
 
-echo ""
-print_info "Log file: $LOG_DIR/processing_log.txt"
-echo ""
+# Run main workflow
+main "$@"
