@@ -38,6 +38,11 @@ PROTOX_RESULTS_URL = f'{PROTOX_BASE_URL}/index.php?site=compound_search_similari
 MAX_WAIT_TIME = 900  # Maximum wait time for prediction (seconds) - 15 minutes
 BATCH_SIZE = 10      # Number of compounds to process in one batch
 RETRY_TIMES = 3      # Number of retry attempts on failure
+                     # Example: RETRY_TIMES = 3 means:
+                     #   - 1st attempt fails → retry
+                     #   - 2nd attempt fails → retry
+                     #   - 3rd attempt fails → mark as failed
+                     # Increase for unstable connections, decrease for stable ones
 
 # Browser settings
 HEADLESS_MODE = True  # Set to False to see browser window

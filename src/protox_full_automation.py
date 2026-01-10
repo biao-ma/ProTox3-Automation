@@ -330,14 +330,26 @@ def main():
             
             log_message(f"\n[{idx+1}/{end_idx}] Processing compound {pubchem_id}")
             
-            success = process_compound(driver, pubchem_id, canonical_smiles)
+            # Retry logic
+            success = False
+            for attempt in range(config.RETRY_TIMES):
+                if attempt > 0:
+                    log_message(f"  Retry attempt {attempt}/{config.RETRY_TIMES - 1}")
+                
+                success = process_compound(driver, pubchem_id, canonical_smiles)
+                
+                if success:
+                    break
+                elif attempt < config.RETRY_TIMES - 1:
+                    log_message(f"  ⚠ Attempt {attempt + 1} failed, retrying...")
+                    time.sleep(10)  # Wait before retry
             
             if success:
                 success_count += 1
                 log_message(f"✓ Compound {pubchem_id} processed successfully")
             else:
                 fail_count += 1
-                log_message(f"✗ Compound {pubchem_id} processing failed")
+                log_message(f"✗ Compound {pubchem_id} processing failed after {config.RETRY_TIMES} attempts")
             
             log_message("")
             
