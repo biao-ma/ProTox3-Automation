@@ -43,6 +43,14 @@ RETRY_TIMES = 3      # Number of retry attempts on failure
 HEADLESS_MODE = True  # Set to False to see browser window
 BROWSER_TIMEOUT = 30  # Browser operation timeout (seconds)
 
+# Debug settings
+DEBUG_MODE = False  # Set to True to enable debug screenshots and verbose logging
+DEBUG_SCREENSHOT_DIR = os.path.join(RESULTS_DIR, 'debug_screenshots')  # Directory for debug screenshots
+
 # Create directories if they don't exist
 for directory in [DATA_DIR, RESULTS_DIR, LOGS_DIR]:
     os.makedirs(directory, exist_ok=True)
+
+# Create debug directory if debug mode is enabled
+if DEBUG_MODE:
+    os.makedirs(DEBUG_SCREENSHOT_DIR, exist_ok=True)

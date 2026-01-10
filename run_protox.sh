@@ -161,14 +161,10 @@ convert_smiles() {
     print_info "Output file: $CANONICAL_CSV"
     
     if [ -f "$CANONICAL_CSV" ]; then
-        print_warning "Canonical SMILES file already exists"
-        read -p "Do you want to regenerate it? (y/n) " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_info "Using existing canonical SMILES file"
-            echo ""
-            return
-        fi
+        print_info "Canonical SMILES file already exists, using it"
+        print_info "To regenerate, delete $CANONICAL_CSV and run again"
+        echo ""
+        return
     fi
     
     print_info "Running SMILES conversion..."
@@ -209,17 +205,8 @@ run_predictions() {
     MAX_TIME=$(( TOTAL_TO_PROCESS * 10 / 60 ))
     
     echo ""
-    print_warning "Estimated processing time: $MIN_TIME - $MAX_TIME hours"
-    print_warning "Each compound takes approximately 5-10 minutes"
-    echo ""
-    
-    read -p "Continue with toxicity prediction? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Prediction cancelled"
-        exit 0
-    fi
-    
+    print_info "Estimated processing time: $MIN_TIME - $MAX_TIME hours"
+    print_info "Each compound takes approximately 5-10 minutes"
     echo ""
     print_info "Starting toxicity predictions..."
     print_info "You can monitor progress in: $LOGS_DIR/processing_log.txt"

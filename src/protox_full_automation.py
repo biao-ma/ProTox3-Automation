@@ -146,13 +146,14 @@ def process_compound(driver, pubchem_id, canonical_smiles):
         log_message(f"  Current URL: {driver.current_url}")
         log_message(f"  Page title: {driver.title}")
         
-        # Save screenshot for debugging
-        try:
-            screenshot_path = os.path.join(OUTPUT_DIR, f"debug_{pubchem_id}_page.png")
-            driver.save_screenshot(screenshot_path)
-            log_message(f"  Screenshot saved: {screenshot_path}")
-        except:
-            pass
+        # Save screenshot for debugging (only if DEBUG_MODE is enabled)
+        if config.DEBUG_MODE:
+            try:
+                screenshot_path = os.path.join(config.DEBUG_SCREENSHOT_DIR, f"debug_{pubchem_id}_page.png")
+                driver.save_screenshot(screenshot_path)
+                log_message(f"  Screenshot saved: {screenshot_path}")
+            except Exception as e:
+                log_message(f"  Warning: Failed to save screenshot: {e}")
         
         # Find and fill SMILES input field
         log_message("  Filling SMILES input field...")
