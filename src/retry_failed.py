@@ -215,17 +215,16 @@ def main():
         # Run protox_full_automation.py with the failed compounds
         script_path = os.path.join(os.path.dirname(__file__), 'protox_full_automation.py')
         
-        print(f"Running: python3 {script_path}")
+        print(f"Running: python3 {script_path} --input {temp_input}")
         print(f"Input file: {temp_input}")
         print()
         
-        # Temporarily replace the input file in config
-        original_input = config.CANONICAL_SMILES_FILE
-        config.CANONICAL_SMILES_FILE = temp_input
-        
         try:
-            # Run the automation script
-            result = subprocess.run([sys.executable, script_path], check=False)
+            # Run the automation script with custom input file
+            result = subprocess.run(
+                [sys.executable, script_path, '--input', temp_input],
+                check=False
+            )
             
             if result.returncode == 0:
                 print()
@@ -238,12 +237,10 @@ def main():
                 print("⚠ Retry completed with some errors")
                 print("=" * 70)
         finally:
-            # Restore original input file
-            config.CANONICAL_SMILES_FILE = original_input
-            
             # Clean up temporary file
             if os.path.exists(temp_input):
                 os.remove(temp_input)
+                print(f"Temporary file removed: {temp_input}")
     else:
         print()
         print("=" * 70)

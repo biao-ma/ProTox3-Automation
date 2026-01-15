@@ -273,16 +273,21 @@ def main():
                        help='Start index (default: 0)')
     parser.add_argument('end', type=int, nargs='?', default=None, 
                        help='End index (default: all)')
+    parser.add_argument('--input', type=str, default=None,
+                       help='Custom input file path (default: from config.py)')
     args = parser.parse_args()
     
     start_idx = args.start
     end_idx = args.end
     
+    # Use custom input file if provided, otherwise use config
+    input_file = args.input if args.input else CANONICAL_SMILES_FILE
+    
     log_message("=" * 60)
     log_message("ProTox-3 Automation Script Started")
     log_message("=" * 60)
     log_message(f"Configuration:")
-    log_message(f"  Input file: {CANONICAL_SMILES_FILE}")
+    log_message(f"  Input file: {input_file}")
     log_message(f"  Output directory: {OUTPUT_DIR}")
     log_message(f"  Log file: {LOG_FILE}")
     log_message(f"  Start index: {start_idx}")
@@ -290,14 +295,14 @@ def main():
     log_message("")
     
     # Check if input file exists
-    if not os.path.exists(CANONICAL_SMILES_FILE):
-        log_message(f"✗ Input file not found: {CANONICAL_SMILES_FILE}")
+    if not os.path.exists(input_file):
+        log_message(f"✗ Input file not found: {input_file}")
         log_message("Please run convert_smiles.py first to generate canonical SMILES")
         return
     
     # Read compounds from CSV
     compounds = []
-    with open(CANONICAL_SMILES_FILE, 'r', encoding='utf-8') as f:
+    with open(input_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             compounds.append(row)
